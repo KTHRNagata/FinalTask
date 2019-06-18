@@ -1,0 +1,262 @@
+<html>
+
+  <head>
+    <meta charset="utf-8"/>
+    <title>Final Task</title>
+  </head>
+
+  <body style="margin:0">
+  	<div id="box">
+	    <div id="literal">
+    		<h1>実装したこと</h1>
+    		<p>最終課題においては、ロブスターを用いたプログラムを作成した。右側のスライダーやボタンを使って操作する。<br>最初のスライダーは、ロブスターの周りのボックスの色を変化させるもので、RGBを変化させて色を変える。<br>次のスライダーは、ISOValueを変えるボタンであり、スライダーで値を変えた後、applyボタンを押せば、ロブスターが変化する。<br>最後合わせて４つのボタンが、反射の仕方や、影を変えるものであり、Lambertianに２種類、Phongに２種類の影をつけることができる。</p>
+    	</div>
+	    <div id="display" style="width: 80%; float: left;">
+	    </div>
+	    <div id="controller" style="width:20%; float:right;">
+	      <label id="label_box" style="font-family:Arial;">Box Color:</label><br>
+	      <label id="label_boxr" style="font-family:Arial;"></label>
+	      <input type="range" min="0" max="1" step="0.01" value="0" id="boxr_value"/><br>
+	      <label id="label_boxg" style="font-family:Arial;"></label>
+	      <input type="range" min="0" max="1" step="0.01" value="0" id="boxg_value"/><br>
+	      <label id="label_boxb" style="font-family:Arial;"></label>
+	      <input type="range" min="0" max="1" step="0.01" value="0" id="boxb_value"/><br><br>
+	      <label id="label" style="font-family:Arial;"></label>
+	      <input type="range" min="0" max="1" step="0.01" value="0.5" id="isovalue"/>
+	      <button id="change-isovalue-button" style="font-family=Arial;">Apply</button><br><br>
+		  <label id="label" style="font-family:Arial;">Lambertian Reflection:</label><br>
+	      <button id="lam_gouraud-button" style="font-family=Arial;">Gouraud Shading</button>
+	      <button id="lam_phong-button" style="font-family=Arial;">Phong Shading</button><br>
+		  <label id="label" style="font-family:Arial;">Phong Reflection:</label><br>
+	      <button id="phong_gouraud-button" style="font-family=Arial;">Gouraud Shading</button>
+	      <button id="phong_phong-button" style="font-family=Arial;">Phong Shading</button><br>
+	    </div>
+	</div>
+
+    <script type="x-shader/x-vertex" id="lam_gouraud.vert">
+      varying vec3 point_color;
+      varying vec4 point_position;
+      varying vec3 normal_vector;
+      uniform vec3 light_position;
+      uniform vec3 camera_position;
+      
+      vec3 LambertianReflection( vec3 C, vec3 L, vec3 N )
+      {
+      float ka = 0.3;
+      float kd = 0.5;
+      
+      float dd = dot( N, L );
+      float Ia = ka;
+      float Id = kd * dd;
+      return C * ( Ia + Id );
+      }
+      
+      
+      void main()
+      {
+      point_position = modelViewMatrix * vec4( position, 1.0 );
+      normal_vector = normalMatrix * normal;
+      
+      vec3 C = color;
+      vec3 L = normalize( light_position - point_position.xyz );
+      vec3 N = normalize( normal_vector );
+      vec3 V = normalize( camera_position - point_position.xyz );
+      
+      #if defined( Lambert )
+      point_color = LambertianReflection( C, L, N );
+      #else
+      point_color = C;
+      #endif
+      
+      gl_Position = projectionMatrix * point_position;
+      }
+    </script>
+    
+    <script type="x-shader/x-fragment" id="lam_gouraud.frag">
+      varying vec3 point_color;
+      
+      void main()
+      {
+      gl_FragColor = vec4( point_color, 1.0 );
+      }
+    </script>
+    
+    <script type="x-shader/x-vertex" id="lam_phong.vert">
+      varying vec3 point_color;
+      varying vec4 point_position;
+      varying vec3 normal_vector;
+      
+      void main()
+      {
+      point_color = color;
+      point_position = modelViewMatrix * vec4( position, 1.0 );
+      normal_vector = normalMatrix * normal;
+      
+      gl_Position = projectionMatrix * point_position;
+      }
+    </script>
+    
+    <script type="x-shader/x-fragment" id="lam_phong.frag">
+      varying vec3 point_color;
+      varying vec4 point_position;
+      varying vec3 normal_vector;
+      uniform vec3 light_position;
+      uniform vec3 camera_position;
+      uniform int reflection_model;
+      
+      vec3 LambertianReflection( vec3 C, vec3 L, vec3 N )
+      {
+      float ka = 0.3;
+      float kd = 0.5;
+      
+      float dd = dot( N, L );
+      float Ia = ka;
+      float Id = kd * dd;
+      return C * ( Ia + Id );
+      }
+      
+      
+      
+      void main()
+      {
+      vec3 C = point_color;
+      vec3 L = normalize( light_position - point_position.xyz );
+      vec3 N = normalize( normal_vector );
+      vec3 V = normalize( camera_position - point_position.xyz );
+      
+      #if defined( Lambert )
+      vec3 shaded_color = LambertianReflection( C, L, N );
+      #else
+      vec3 shaded_color = C;
+      #endif
+      
+      gl_FragColor = vec4( shaded_color, 1.0 );
+      }
+    </script>
+	
+	<script type="x-shader/x-vertex" id="phong_gouraud.vert">
+	 varying vec3 point_color;
+	 varying vec4 point_position;
+	 varying vec3 normal_vector;
+	 uniform vec3 light_position;
+	 uniform vec3 camera_position;
+
+
+	 vec3 PhongReflection( vec3 C, vec3 L, vec3 N, vec3 V )
+	 {
+	     float ka = 0.3;
+	     float kd = 0.5;
+	     float ks = 0.8;
+	     float n = 50.0;
+
+	     vec3 R = reflect( -L, N );
+	     float dd = dot( N, L );
+	     float ds = 0.0;
+	     if ( dd > 0.0 )
+	     {
+		 ds = pow( dot( R, V ), n );
+	     }
+
+	     float Ia = ka;
+	     float Id = kd * dd;
+	     float Is = ks * ds;
+	     return C * ( Ia + Id + Is );
+	 }
+
+
+
+	 void main()
+	 {
+	     point_position = modelViewMatrix * vec4( position, 1.0 );
+	     normal_vector = normalMatrix * normal;
+
+	     vec3 C = color;
+	     vec3 L = normalize( light_position - point_position.xyz );
+	     vec3 N = normalize( normal_vector );
+	     vec3 V = normalize( camera_position - point_position.xyz );
+
+	     point_color = PhongReflection( C, L, N, V );
+	     gl_Position = projectionMatrix * point_position;
+
+	 }
+	</script>
+
+	<script type="x-shader/x-fragment" id="phong_gouraud.frag">
+	 varying vec3 point_color;
+
+	 void main()
+	 {
+	     gl_FragColor = vec4( point_color, 1.0 );
+	 }
+	</script>
+
+	<script type="x-shader/x-vertex" id="phong_phong.vert">
+	 varying vec3 point_color;
+	 varying vec4 point_position;
+	 varying vec3 normal_vector;
+
+	 void main()
+	 {
+	     point_color = color;
+	     point_position = modelViewMatrix * vec4( position, 1.0 );
+	     normal_vector = normalMatrix * normal;
+
+	     gl_Position = projectionMatrix * point_position;
+	 }
+	</script>
+
+	<script type="x-shader/x-fragment" id="phong_phong.frag">
+	 varying vec3 point_color;
+	 varying vec4 point_position;
+	 varying vec3 normal_vector;
+	 uniform vec3 light_position;
+	 uniform vec3 camera_position;
+	 uniform int reflection_model;
+
+
+	 vec3 PhongReflection( vec3 C, vec3 L, vec3 N, vec3 V )
+	 {
+	     float ka = 0.3;
+	     float kd = 0.5;
+	     float ks = 0.8;
+	     float n = 50.0;
+
+	     vec3 R = reflect( -L, N );
+	     float dd = dot( N, L );
+	     float ds = 0.0;
+	     if ( dd > 0.0 )
+	     {
+		 ds = pow( dot( R, V ), n );
+	     }
+
+	     float Ia = ka;
+	     float Id = kd * dd;
+	     float Is = ks * ds;
+	     return C * ( Ia + Id + Is );
+	 }
+
+
+	 void main()
+	 {
+	     vec3 C = point_color;
+	     vec3 L = normalize( light_position - point_position.xyz );
+	     vec3 N = normalize( normal_vector );
+	     vec3 V = normalize( camera_position - point_position.xyz );
+
+
+	     vec3 shaded_color = PhongReflection( C, L, N, V );
+	     gl_FragColor = vec4( shaded_color, 1.0 );
+	 }
+	</script>
+    
+    <script src="three.min.js"></script>
+    <script src="TrackballControls.js"></script>
+    <script src="KVS.min.js"></script>
+    <script src="KVS2THREE.min.js"></script>
+    <script src="KVSLobsterData.js"></script>
+    <script src="KVSSingleCubeData.js"></script>
+    <script src="w15_task2.js"></script>
+    <script>main()</script>
+  </body>
+
+</html>
